@@ -13,6 +13,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.RelativeLayout;
 
 
 import com.codingwithmitch.googlemaps2018.R;
@@ -23,7 +24,12 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.maps.DirectionsApiRequest;
+import com.google.maps.GeoApiContext;
+import com.google.maps.PendingResult;
+import com.google.maps.model.DirectionsResult;
 
 import java.util.ArrayList;
 
@@ -32,16 +38,24 @@ import static com.codingwithmitch.googlemaps2018.Constants.MAPVIEW_BUNDLE_KEY;
 public class UserListFragment extends Fragment implements OnMapReadyCallback {
 
     private static final String TAG = "UserListFragment";
+    private static final int MAP_LAYOUT_STATE_CONTRACTED = 0;
+    private static final int MAP_LAYOUT_STATE_EXPANDED = 1;
 
     //widgets
     private RecyclerView mUserListRecyclerView;
     private MapView mMapView;
+    private RelativeLayout mMapContainer;
 
 
     //vars
     private ArrayList<User> mUserList = new ArrayList<>();
     private ArrayList<UserLocation> mUserLocations = new ArrayList<>();
     private UserRecyclerAdapter mUserRecyclerAdapter;
+    private GoogleMap mGoogleMap;
+    private UserLocation mUserLocation;
+
+    private GeoApiContext mGeoApiContext =null;
+
 
 
     public static UserListFragment newInstance() {
@@ -77,6 +91,40 @@ public class UserListFragment extends Fragment implements OnMapReadyCallback {
         return view;
     }
 
+    private void calculateDirections(Marker marker){
+        Log.d(TAG, "calculateDirections: calculating directions.");
+
+        com.google.maps.model.LatLng destination = new com.google.maps.model.LatLng(
+                marker.getPosition().latitude,
+                marker.getPosition().longitude
+        );
+        DirectionsApiRequest directions = new DirectionsApiRequest(mGeoApiContext);
+
+        directions.alternatives(true);
+        directions.origin(
+                new com.google.maps.model.LatLng(
+                        mUserPosition.getGeo_point().getLatitude(),
+                        mUserPosition.getGeo_point().getLongitude()
+                )
+        );
+        Log.d(TAG, "calculateDirections: destination: " + destination.toString());
+        directions.destination(destination).setCallback(new PendingResult.Callback<DirectionsResult>() {
+            @Override
+            public void onResult(DirectionsResult result) {
+                Log.d(TAG, "calculateDirections: routes: " + result.routes[0].toString());
+                Log.d(TAG, "calculateDirections: duration: " + result.routes[0].legs[0].duration);
+                Log.d(TAG, "calculateDirections: distance: " + result.routes[0].legs[0].distance);
+                Log.d(TAG, "calculateDirections: geocodedWayPoints: " + result.geocodedWaypoints[0].toString());
+            }
+
+            @Override
+            public void onFailure(Throwable e) {
+                Log.e(TAG, "calculateDirections: Failed to get directions: " + e.getMessage() );
+
+            }
+        });
+    }
+
     private void initGoogleMap(Bundle savedInstanceState) {
         // MapView requires that the Bundle you pass contain _ONLY_ MapView SDK
         // objects or sub-Bundles.
@@ -88,6 +136,12 @@ public class UserListFragment extends Fragment implements OnMapReadyCallback {
         mMapView.onCreate(mapViewBundle);
 
         mMapView.getMapAsync(this);
+
+        if(mGeoApiContext ==null){
+            mGeoApiContext = new GeoApiContext.Builder()
+                    .apiKey(getString(R.string.google_api_key))
+                    .build();
+        }
     }
 
 
