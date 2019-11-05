@@ -144,6 +144,7 @@ public class ChatroomActivity extends AppCompatActivity implements
                             Log.d(TAG, "onEvent: user list size: " + mUserList.size());
                         }
                     }
+
                 });
     }
 
@@ -154,8 +155,10 @@ public class ChatroomActivity extends AppCompatActivity implements
         locationRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
             @Override
             public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                if(task.getResult().toObject(UserLocation.class) !=null){
-                    mUserLocations.add(task.getResult().toObject(UserLocation.class));
+                if(task.isSuccessful()){
+                    if(task.getResult().toObject(UserLocation.class)!= null){
+                        mUserLocations.add(task.getResult().toObject(UserLocation.class));
+                    }
                 }
             }
         });
